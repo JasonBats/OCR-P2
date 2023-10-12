@@ -40,4 +40,4 @@ with open("prices.csv", "w", encoding="utf-8") as fichier_csv:
     writer.writerow(en_tete)
     for title, price in zip(titles, prices):
         ligne = [title.string, price.string]
-        writer.writerow(ligne)
+        writer.writerow(ligne) # Commentaire supplémentaire juste pour tester git
