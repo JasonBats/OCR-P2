@@ -4,6 +4,10 @@ import csv
 import os
 import re
 
+"""
+Tester des bouts de code ici
+"""
+
 os.makedirs("images", exist_ok = True)
 os.makedirs("datas", exist_ok = True)
 
