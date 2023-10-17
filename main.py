@@ -15,7 +15,8 @@ with open("datas.csv", "w", encoding="utf-8") as fichier_csv:
     writer = csv.writer(fichier_csv, delimiter=";")
     writer.writerow(en_tete)
     page_number = 1
-    while reponse != 404: # Tant que l'URL ne renvoie pas de 404 : aller à la page suivante
+    while page_number < 5: # Ligne pour tests
+    # while reponse != 404: # Tant que l'URL ne renvoie pas de 404 : aller à la page suivante
         url = "http://books.toscrape.com/catalogue/page-" + str(page_number) + ".html" # Ecriture de l'URL de page d'accueil / Actuellement 50 pages
         print(url)
         reponse = requests.get(url)
@@ -30,7 +31,7 @@ with open("datas.csv", "w", encoding="utf-8") as fichier_csv:
                     url_product = a["href"]
                     reponse_product = requests.get("http://books.toscrape.com/catalogue/" + url_product) # Concatener chaque url
                     page_product = reponse_product.content # Ouvrir chaque url
-                    soup = BeautifulSoup(page_product, "html.parser") # Parser chaque page produit
+                    soup = BeautifulSoup(page_product, "html.parser") # Parser la page produit
                     tables = soup.find_all("td") # Cibler le tableau descriptif de l'article
                     upc = tables[0] # Le code UPC correspond à la 1ère <td> du tableau
                     book_title = soup.find("h1") # Cibler le titre <h1> de la page qui correspond au titre du livre
