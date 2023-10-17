@@ -1,6 +1,11 @@
 from bs4 import BeautifulSoup
 import requests
 import csv
+import os
+import re
+
+os.makedirs("images", exist_ok = True)
+os.makedirs("datas", exist_ok = True)
 
 url = "http://books.toscrape.com/catalogue/page-1.html"
 reponse = requests.get(url)
@@ -21,8 +26,8 @@ name_category_index = 1
 
 def scraping (url_to_work):
     url_to_work = url_to_work
-    # print(f"Scraping de la page n°{check_number_pages} de la catégorie {categories_titles[page_number_category]}")
-    # print(f"url = {url_to_work}")
+    print(f"Scraping de la page n°{check_number_pages} de la catégorie {categories_titles[page_number_category]}")
+    print(f"url = {url_to_work}")
     reponse = requests.get(url_to_work)
     page_to_work = reponse.content
     soup = BeautifulSoup(page_to_work, "html.parser")
@@ -66,12 +71,17 @@ def scraping (url_to_work):
                         note = 0
                 active_item_image = soup.find("img")
                 image_url = active_item_image.get("src")
+                image_name = requests.get("http://books.toscrape.com" + image_url[5:]).content
+                image_filename = os.path.join("images", os.path.basename(book_title.text + ".jpg"))
+                image_clean_filename = re.sub(r"[^a-zA-z0-9-.]", "", image_filename)
+                with open(image_clean_filename, "wb") as img_file:
+                    img_file.write(image_name)
                 ligne = [clean_url, upc.text, book_title.text, price_excl_tax.text[1:], price_incl_tax.text[1:], number_available.text[10:][:-10], book_description.text, category.text[1:][:-1], note, "http://books.toscrape.com" + image_url[5:]]
                 writer.writerow(ligne)
 
-
 while page_number_category < len(categories_url):
-    with open(categories_titles[name_category_index]+".csv", "w", encoding="utf-8") as fichier_csv:
+    datas_path = os.path.join("datas", f"{categories_titles[name_category_index]}.csv")
+    with open(datas_path, "w", encoding="utf-8") as fichier_csv:
         en_tete = ["URL Produit", "Code UPC", "Titre", "Prix TTC", "Prix HT", "Stock Disponible", "Description", "Catégorie", "Note", "URL Image"]
         writer = csv.writer(fichier_csv, delimiter=";")
         writer.writerow(en_tete)
@@ -85,7 +95,7 @@ while page_number_category < len(categories_url):
                 url_to_work = "http://books.toscrape.com/catalogue/" + str(categories_url[page_number_category])[:-10] + "page-" + str(check_number_pages) + ".html"
                 multipage = requests.get(url_to_work)
                 if "404" in str(multipage):
-                    # print(f"Pas de page {check_number_pages}. Catégorie {categories_titles[page_number_category]} terminée.")
+                    print(f"Pas de page {check_number_pages}. Catégorie {categories_titles[page_number_category]} terminée.")
                     break
                 scraping("http://books.toscrape.com/catalogue/" + str(categories_url[page_number_category])[:-10] + "page-" + str(check_number_pages) + ".html")
                 check_number_pages += 1
