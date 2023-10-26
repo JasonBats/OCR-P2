@@ -4,10 +4,6 @@ import csv
 import os
 import re
 
-"""
-Tester des bouts de code ici
-"""
-
 os.makedirs("images", exist_ok = True)
 os.makedirs("datas", exist_ok = True)
 
@@ -28,6 +24,8 @@ for li in liste.find_all("li"):
 page_number_category = 1 # 1 car 0 = books (catégorie mère)
 name_category_index = 1
 
+print(categories_url)
+
 def scraping (url_to_work):
     url_to_work = url_to_work
     print(f"Scraping de la page n°{check_number_pages} de la catégorie {categories_titles[page_number_category]}")
@@ -37,55 +35,38 @@ def scraping (url_to_work):
     soup = BeautifulSoup(page_to_work, "html.parser")
     articles = soup.find_all("article") # Cibler chaque article
     for article in articles:
-        h3_elements = article.find_all("h3") # Dans chaque article, cibler chaque nom d'article
-        for h3 in h3_elements:
-            a_elements = h3.find_all("a") # Dans chaque nom d'article, récupérer le lien de l'article
-            for a in a_elements:
-                url_product = a["href"]
-                clean_url = "http://books.toscrape.com/catalogue/" + str(url_product)[9:]
-                reponse_product = requests.get(clean_url) # Concatener chaque url
-                page_product = reponse_product.content # Ouvrir chaque url
-                soup = BeautifulSoup(page_product, "html.parser") # Parser la page produit
-                tables = soup.find_all("td") # Cibler le tableau descriptif de l'article
-                upc = tables[0] # Le code UPC correspond à la 1ère <td> du tableau
-                book_title = soup.find("h1") # Cibler le titre <h1> de la page qui correspond au titre du livre
-                price_excl_tax = tables[2]
-                price_incl_tax = tables[3]
-                number_available = tables[5]
-                paragraphs = soup.find_all("p")
-                book_description = paragraphs[3] # Description = 4ème <p> de la page. Peut mieux faire ?
-                ariane = soup.find("ul") # Chercher la liste  présente dans le fil d'ariane
-                for items in ariane:
-                    items = soup.find_all("li")
-                    category = items[2] # Récupérer le 3e item de la liste dans le fil d'ariane > Correspond à la catégorie
-                stars = soup.find("p", class_="star-rating") # Trouver le <p> dans lequel se trouvent les étoiles
-                rating = stars.get("class") # Récupérer les noms de classes attribuées aux étoiles
-                match rating[1]: # Isoler le nom de classe correspondant à la note donnée et convertir en int
-                    case "One":
-                        note = 1
-                    case "Two":
-                        note = 2
-                    case "Three":
-                        note = 3
-                    case "Four":
-                        note = 4
-                    case "Five":
-                        note = 5
-                    case _:
-                        note = 0
-                active_item_image = soup.find("img")
-                image_url = active_item_image.get("src")
-                image_name = requests.get("http://books.toscrape.com" + image_url[5:]).content
-                image_filename = os.path.join("images", os.path.basename(book_title.text + ".jpg"))
-                image_clean_filename = re.sub(r"[^a-zA-z0-9-.]", "", image_filename)
-                with open(image_clean_filename, "wb") as img_file:
-                    img_file.write(image_name)
-                ligne = [clean_url, upc.text, book_title.text, price_excl_tax.text[1:], price_incl_tax.text[1:], number_available.text[10:][:-10], book_description.text, category.text[1:][:-1], note, "http://books.toscrape.com" + image_url[5:]]
-                writer.writerow(ligne)
+        url_product = article.h3.a["href"]
+        clean_url = "http://books.toscrape.com/catalogue/" + str(url_product)[9:]
+        reponse_product = requests.get(clean_url) # Concatener chaque url
+        page_product = reponse_product.content # Ouvrir chaque url
+        soup = BeautifulSoup(page_product, "html.parser") # Parser la page produit
+        tables = soup.find_all("td") # Cibler le tableau descriptif de l'article
+        upc = tables[0] # Le code UPC correspond à la 1ère <td> du tableau
+        book_title = soup.find("h1") # Cibler le titre <h1> de la page qui correspond au titre du livre
+        price_excl_tax = re.sub(r'[^\d.]', '', str(tables[2])) # Récupérer le contenu de la cellule prix, exclure tout ce qui n'est pas un chiffre ou un point
+        price_incl_tax = re.sub(r'[^\d.]', '', str(tables[3]))
+        stock = re.sub(r'\D', '', str(tables[5]))
+        paragraphs = soup.find_all("p")
+        book_description = paragraphs[3].text # Description = 4ème <p> de la page. Peut mieux faire ?
+        ariane = soup.find("ul") # Chercher la liste  présente dans le fil d'ariane
+        category_url = ariane.select_one(":nth-child(3)").a
+        category = category_url.text
+        rating = soup.find("p", class_="star-rating").get("class") # Trouver le <p> dans lequel se trouvent les étoiles + Récupérer les noms de classes attribuées aux étoiles
+        notation = {"One" : 1, "Two" : 2, "Three" : 3, "Four" : 4, "Five" : 5} # Dictionnaire pour équivalence note en str into int
+        note = notation[rating[1]] # Conversion int
+        image_url = soup.find("img").get("src")
+        image_name = requests.get("http://books.toscrape.com" + image_url[5:]).content
+        image_filename = os.path.join("images", os.path.basename(book_title.text + ".jpg"))
+        image_clean_filename = re.sub(r"[^a-zA-z0-9-.]", "", image_filename)
+        with open(image_clean_filename, "wb") as img_file:
+            img_file.write(image_name)
+        ligne = [clean_url, upc.text, book_title.text, price_excl_tax, price_incl_tax, stock, book_description, category, note, str("http://books.toscrape.com" + image_url[5:])]
+        # print(book_description)
+        writer.writerow(ligne)
 
 while page_number_category < len(categories_url):
     datas_path = os.path.join("datas", f"{categories_titles[name_category_index]}.csv")
-    with open(datas_path, "w", encoding="utf-8") as fichier_csv:
+    with open(datas_path, "w", encoding="utf-8", newline="") as fichier_csv:
         en_tete = ["URL Produit", "Code UPC", "Titre", "Prix TTC", "Prix HT", "Stock Disponible", "Description", "Catégorie", "Note", "URL Image"]
         writer = csv.writer(fichier_csv, delimiter=";")
         writer.writerow(en_tete)
