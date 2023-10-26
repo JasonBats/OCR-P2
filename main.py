@@ -64,30 +64,35 @@ def scraping (url_to_work):
         scraped_books.append(ligne)
     return scraped_books
 
+def csv_create(datas_path, category_url):
+    check_number_pages = 1
+    fichier_csv = open(datas_path, "a", encoding="utf-8", newline="")
+    en_tete = ["URL Produit", "Code UPC", "Titre", "Prix TTC", "Prix HT", "Stock Disponible", "Description", "Catégorie", "Note", "URL Image"]
+    writer = csv.writer(fichier_csv, delimiter=";")
+    writer.writerow(en_tete)
+    url_to_work = "http://books.toscrape.com/catalogue/" + str(category_url)[:-10] + "page-" + str(check_number_pages) + ".html"
+    multipage = requests.get(url_to_work)
+    return multipage, writer, fichier_csv, check_number_pages
+
 def browse_urls(categories_urls):
     for index, category_url in enumerate(categories_urls):
         datas_path = os.path.join("datas", f"{categories_titles[index]}.csv")
-
-        with open(datas_path, "w", encoding="utf-8", newline="") as fichier_csv:
-            en_tete = ["URL Produit", "Code UPC", "Titre", "Prix TTC", "Prix HT", "Stock Disponible", "Description", "Catégorie", "Note", "URL Image"]
-            writer = csv.writer(fichier_csv, delimiter=";")
-            writer.writerow(en_tete)
-            check_number_pages = 1
-            url_to_work = "http://books.toscrape.com/catalogue/" + str(category_url)[:-10] + "page-" + str(check_number_pages) + ".html"
-            multipage = requests.get(url_to_work)
-            if "404" in str(multipage):
-                scraped = scraping("http://books.toscrape.com/catalogue/" + str(category_url)[:-10] + "index.html")
+        multipage, writer, fichier_csv, check_number_pages = csv_create(datas_path, category_url)
+        if "404" in str(multipage):
+            scraped = scraping("http://books.toscrape.com/catalogue/" + str(category_url)[:-10] + "index.html")
+            writer.writerows(scraped)
+            fichier_csv.close()
+        else:
+            while "404" not in str(multipage):
+                url_to_work = "http://books.toscrape.com/catalogue/" + str(category_url)[:-10] + "page-" + str(check_number_pages) + ".html"
+                multipage = requests.get(url_to_work)
+                if "404" in str(multipage):
+                    print(f"Pas de page {check_number_pages}. Catégorie {category_url} terminée.")
+                    break
+                scraped = scraping("http://books.toscrape.com/catalogue/" + str(category_url)[:-10] + "page-" + str(check_number_pages) + ".html")
                 writer.writerows(scraped)
-            else:
-                while "404" not in str(multipage):
-                    url_to_work = "http://books.toscrape.com/catalogue/" + str(category_url)[:-10] + "page-" + str(check_number_pages) + ".html"
-                    multipage = requests.get(url_to_work)
-                    if "404" in str(multipage):
-                        print(f"Pas de page {check_number_pages}. Catégorie {category_url} terminée.")
-                        break
-                    scraped = scraping("http://books.toscrape.com/catalogue/" + str(category_url)[:-10] + "page-" + str(check_number_pages) + ".html")
-                    writer.writerows(scraped)
-                    check_number_pages += 1
+                check_number_pages += 1
+            fichier_csv.close()
 
 if __name__ == "__main__":
     categories_titles, categories_urls = extract_categories_urls()
